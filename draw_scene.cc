@@ -80,6 +80,7 @@ DEFINE_string(vertex_shader_filepath, "",
 DEFINE_string(fragment_shader_filepath, "",
               "Filepath of the fragment shader.");
 DEFINE_string(model_filepath, "", "Filepath of the model to load.");
+DEFINE_double(scale, 0.5, "Scale of the object.");
 
 // Annonymous namespace for constants and helper functions.
 namespace {
@@ -208,6 +209,14 @@ Eigen::Matrix4f ComputeRotation(const Eigen::Vector3f& axis,
   Eigen::Matrix4f transformation = Eigen::Matrix4f::Identity();
   Eigen::Matrix3f rot3 = rotation.matrix();
   transformation.block(0, 0, 3, 3)  = rot3;
+  return transformation;
+}
+
+Eigen::Matrix4f ComputeScaling(const GLfloat scale) {
+  Eigen::Matrix4f transformation = Eigen::Matrix4f::Identity();
+  transformation(0, 0) = scale;
+  transformation(1, 1) = scale;
+  transformation(2, 2) = scale;
   return transformation;
 }
 
@@ -390,21 +399,20 @@ void RenderScene(const wvu::ShaderProgram& shader_program,
       glGetUniformLocation(shader_program.shader_program_id(), "projection");
   const GLint vertex_color_location =
       glGetUniformLocation(shader_program.shader_program_id(), "vertex_color");
-  Eigen::Matrix4f translation = 
-    ComputeTranslation(Eigen::Vector3f(0.0f, -2.0f, -8.0f));
-  Eigen::Matrix4f rotation = 
+  const Eigen::Matrix4f translation = 
+      ComputeTranslation(Eigen::Vector3f(0.0f, -2.0f, -8.0f));
+  const Eigen::Matrix4f rotation = 
       ComputeRotation(Eigen::Vector3f(0.0, 1.0, 0.0f).normalized(), angle);
-  Eigen::Matrix4f model = translation * rotation;
-  Eigen::Matrix4f view = Eigen::Matrix4f::Identity();
+  const Eigen::Matrix4f scaling = ComputeScaling(FLAGS_scale);
+  const Eigen::Matrix4f model = translation * rotation * scaling;
+  const Eigen::Matrix4f view = Eigen::Matrix4f::Identity();
   // We do not create the projection matrix here because the projection 
   // matrix does not change.
-  // Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
   glUniformMatrix4fv(model_location, 1, GL_FALSE, model.data());
   glUniformMatrix4fv(view_location, 1, GL_FALSE, view.data());
   glUniformMatrix4fv(projection_location, 1, GL_FALSE, projection.data());
   // Send color.
-  // glUniform4f(vertex_color_location, 1.0f, 0.5f, 0.2f, 1.0f);
-  Eigen::Vector4f color(0.5f, 0.5f, 0.5f, 1.0f);
+  const Eigen::Vector4f color(0.5f, 0.5f, 0.5f, 1.0f);
   glUniform4fv(vertex_color_location, 1, color.data());
   // Draw the triangle.
   // Let OpenGL know what vertex array object we will use.
